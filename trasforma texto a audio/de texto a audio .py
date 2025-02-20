@@ -20,7 +20,7 @@ IDIOMAS_DISPONIBLES = {
     "Portugués": "pt"
 }
 
-# Definimos el tamaño máximo de caracteres por fragmento para gTTS
+# Tamaño máximo de caracteres por fragmento para gTTS
 MAX_CHARACTERS = 4000
 
 # Función para extraer texto de archivos sin cargar todo en memoria,extrae texto de archivos grandes sin sobrecargar la memoria
@@ -110,17 +110,19 @@ class TTSApp:
         self.source_language = tk.StringVar(value="Español")
         self.target_language = tk.StringVar(value="Español")
 
+        # Estilos
         label_font = ("Arial", 10, "bold")
 
+        # Selecciona el idioma de entrada
         tk.Label(root, text="📂 Archivo de entrada:", font=label_font).pack(pady=5)
         tk.Entry(root, textvariable=self.file_path, width=50).pack()
         tk.Button(root, text="Seleccionar", command=self.select_file).pack(pady=2)
 
-        # Selecciona el idioma de entrada
+        # Selección de idioma de entrada
         tk.Label(root, text="🌍 Idioma del documento:", font=label_font).pack(pady=5)
         tk.OptionMenu(root, self.source_language, *IDIOMAS_DISPONIBLES.keys()).pack()
 
-        # Selecciona el  idioma de salida
+        # # Selecciona el  idioma de salida
         tk.Label(root, text="🔁 Traducir a:", font=label_font).pack(pady=5)
         tk.OptionMenu(root, self.target_language, *IDIOMAS_DISPONIBLES.keys()).pack()
 
