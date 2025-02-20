@@ -1,4 +1,4 @@
-# 📖 Text-to-Speech Audiobook Converter
+# 📖 De Texto a Audio Audiobook Converter
 
 Este proyecto convierte documentos en **audiolibros** utilizando **Google Text-to-Speech (gTTS)** y permite la **traducción automática** con **Deep Translator**. Es ideal para transformar libros, artículos o cualquier documento de texto en archivos de audio en **múltiples idiomas**. La interfaz gráfica desarrollada con **Tkinter** facilita la selección de archivos y la configuración del proceso.
 
