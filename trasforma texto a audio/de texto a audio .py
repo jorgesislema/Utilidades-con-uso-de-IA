@@ -1,3 +1,4 @@
+# Librerias
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from gtts import gTTS
@@ -19,12 +20,11 @@ IDIOMAS_DISPONIBLES = {
     "Portugués": "pt"
 }
 
-# Tamaño máximo de caracteres por fragmento para gTTS
+# Definimos el tamaño máximo de caracteres por fragmento para gTTS
 MAX_CHARACTERS = 4000
 
-# --------------- Función para extraer texto de archivos sin cargar todo en memoria ---------------
+# Función para extraer texto de archivos sin cargar todo en memoria,extrae texto de archivos grandes sin sobrecargar la memoria
 def extract_text(file_path):
-    """Extrae texto de archivos grandes sin sobrecargar la memoria."""
     extension = file_path.lower().split('.')[-1]
     
     try:
@@ -39,7 +39,7 @@ def extract_text(file_path):
             text = []
             book = epub.read_epub(file_path)
             for item in book.get_items():
-                if item.get_type() == 9:  # Tipo de contenido de texto
+                if item.get_type() == 9:  
                     text.append(item.get_content().decode('utf-8', errors='ignore'))
             return "\n".join(text)
         
@@ -56,11 +56,10 @@ def extract_text(file_path):
     except Exception as e:
         return f"[Error] No se pudo procesar el archivo: {str(e)}"
 
-# --------------- Traducción de Texto Mejorada ---------------
+# Función para la traducción de Texto Mejorada ,traduce fragmentos grandes en partes pequeñas para evitar errores de mezcla de idiomas.
 def traducir_texto(texto, idioma_destino="es"):
-    """Traduce fragmentos grandes en partes pequeñas para evitar errores de mezcla de idiomas."""
     try:
-        if idioma_destino == "auto":  # Evita traducción innecesaria
+        if idioma_destino == "auto":  
             return texto
         
         traductor = GoogleTranslator(source="auto", target=idioma_destino)
@@ -69,11 +68,10 @@ def traducir_texto(texto, idioma_destino="es"):
         return texto_traducido
     except Exception as e:
         print(f"❌ Error en la traducción: {e}")
-        return texto  # Devuelve el texto original si hay error
+        return texto  
 
-# --------------- Conversión de texto a audio optimizada con hilos ---------------
+# Función para la conversión de texto a audio optimizada con hilos ,convierte texto a audio de manera eficiente usando multithreading
 def text_to_speech(text, language, output_folder, progress_bar):
-    """Convierte texto a audio de manera eficiente usando multithreading."""
     def process_audio():
         try:
             os.makedirs(output_folder, exist_ok=True)
@@ -82,7 +80,7 @@ def text_to_speech(text, language, output_folder, progress_bar):
             
             for i, fragment in enumerate(fragments, start=1):
                 progress = int((i / num_fragments) * 100)
-                progress_bar["value"] = progress  # Actualiza la barra de progreso
+                progress_bar["value"] = progress  
                 root.update_idletasks()
 
                 tts = gTTS(text=fragment, lang=language, slow=False)
@@ -95,12 +93,11 @@ def text_to_speech(text, language, output_folder, progress_bar):
             messagebox.showerror("Error en la conversión", str(e))
 
         finally:
-            progress_bar["value"] = 0  # Reset progress bar
+            progress_bar["value"] = 0  
 
-    # Ejecuta en un hilo separado para no bloquear la interfaz
     threading.Thread(target=process_audio, daemon=True).start()
 
-# --------------- Interfaz gráfica ---------------
+# Interfaz gráfica 
 class TTSApp:
     def __init__(self, root):
         self.root = root
@@ -113,23 +110,21 @@ class TTSApp:
         self.source_language = tk.StringVar(value="Español")
         self.target_language = tk.StringVar(value="Español")
 
-        # Estilos
         label_font = ("Arial", 10, "bold")
 
-        # Selección de archivo de entrada
         tk.Label(root, text="📂 Archivo de entrada:", font=label_font).pack(pady=5)
         tk.Entry(root, textvariable=self.file_path, width=50).pack()
         tk.Button(root, text="Seleccionar", command=self.select_file).pack(pady=2)
 
-        # Selección de idioma de entrada
+        # Selecciona el idioma de entrada
         tk.Label(root, text="🌍 Idioma del documento:", font=label_font).pack(pady=5)
         tk.OptionMenu(root, self.source_language, *IDIOMAS_DISPONIBLES.keys()).pack()
 
-        # Selección de idioma de salida
+        # Selecciona el  idioma de salida
         tk.Label(root, text="🔁 Traducir a:", font=label_font).pack(pady=5)
         tk.OptionMenu(root, self.target_language, *IDIOMAS_DISPONIBLES.keys()).pack()
 
-        # Selección de carpeta de salida
+        # Selecciona la carpeta de salida
         tk.Label(root, text="📁 Carpeta de salida:", font=label_font).pack(pady=5)
         tk.Entry(root, textvariable=self.output_folder, width=50).pack()
         tk.Button(root, text="Seleccionar", command=self.select_output_folder).pack(pady=2)
@@ -141,20 +136,20 @@ class TTSApp:
         # Botón de conversión
         tk.Button(root, text="🔊 Convertir a Audiolibro", command=self.convert).pack(pady=10)
 
+    #Función para abrir el explorador de archivos para seleccionar un documento
     def select_file(self):
-        """Abre el explorador de archivos para seleccionar un documento."""
         file_path = filedialog.askopenfilename(filetypes=[("Documentos", "*.pdf;*.docx;*.epub;*.txt")])
         if file_path:
             self.file_path.set(file_path)
 
+    #Función para abrir el explorador de archivos para seleccionar una carpeta de salida
     def select_output_folder(self):
-        """Abre el explorador de archivos para seleccionar una carpeta de salida."""
         folder_path = filedialog.askdirectory()
         if folder_path:
             self.output_folder.set(folder_path)
 
+    #Función para iniciar la conversión de texto a audiolibro con traducción si es necesario.
     def convert(self):
-        """Inicia la conversión de texto a audiolibro con traducción si es necesario."""
         if not self.file_path.get() or not self.output_folder.get():
             messagebox.showwarning("Advertencia", "Selecciona un archivo de entrada y una carpeta de salida")
             return
@@ -165,7 +160,6 @@ class TTSApp:
             messagebox.showerror("Error", text)
             return
 
-        # Traducción solo si es necesario
         if self.source_language.get() != self.target_language.get():
             text = traducir_texto(text, IDIOMAS_DISPONIBLES[self.target_language.get()])
             if "[Error]" in text:
@@ -174,7 +168,7 @@ class TTSApp:
 
         text_to_speech(text, IDIOMAS_DISPONIBLES[self.target_language.get()], self.output_folder.get(), self.progress_bar)
 
-# Ejecutar la aplicación
+# Ejecutamos la aplicación
 if __name__ == "__main__":
     root = tk.Tk()
     app = TTSApp(root)
