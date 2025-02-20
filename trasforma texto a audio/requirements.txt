@@ -1,0 +1,6 @@
+gtts
+soundfile
+docx2txt
+pdfplumber
+ebooklib
+deep-translator
