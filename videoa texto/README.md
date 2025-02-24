@@ -1,138 +1,74 @@
-# 🎧 Transcriptor de Video a Texto con Vosk
+# Video a Texto con IA
 
-## 📌 Descripción
-Este proyecto es una herramienta avanzada para la transcripción de videos a texto utilizando tecnologías de reconocimiento de voz y procesamiento del lenguaje natural.
-
-El objetivo es convertir automáticamente el audio de un video en texto, mejorar su legibilidad con corrección gramatical y estructurarlo con párrafos, palabras clave y un resumen.
-
-### **📚 Tecnologías Utilizadas**
-- **Vosk** 🗣️ - Reconocimiento de voz en español
-- **Pydub** 🎵 - Manipulación y conversión de audio
-- **SpaCy** 📚 - Procesamiento de lenguaje natural
-- **LanguageTool** ✅ - Corrección gramatical y ortográfica
-- **KeyBERT** 🔑 - Extracción de palabras clave
-- **Transformers** 🤖 - Generación de resúmenes
-- **Tkinter** 🖥️ - Interfaz gráfica de usuario (GUI)
+Este es un programa que permite la transcripción de videos a texto utilizando **Whisper AI** y la generación de resúmenes automáticos con **Hugging Face Transformers**. Es una aplicación diseñada con **Tkinter**, que permite seleccionar archivos de video locales, extraer su audio y transcribirlo de manera eficiente.
 
 ---
 
-## ⚙️ **Requisitos**
-Antes de ejecutar el proyecto, asegúrate de cumplir con los siguientes requisitos:
+## Características Principales
 
-- **Python 3.8 o superior** (Se recomienda Python 3.10, ya que algunas librerías no son compatibles con versiones más recientes)
-- **Dependencias** listadas en `requirements.txt`
-- **Modelo de Vosk en español** (`vosk-model-es-0.42`)
-- **FFmpeg** instalado y configurado para la manipulación de audio
-
----
-
-## 👅 **Instalación**
-Sigue estos pasos para configurar y ejecutar el proyecto correctamente:
-
-### **1️⃣ Clona el repositorio**
-```bash
-git clone https://github.com/tuusuario/videoa_texto.git
-cd videoa_texto
-```
-
-### **2️⃣ Instala las dependencias**
-```bash
-pip install -r requirements.txt
-```
-
-### **3️⃣ Descarga e instala el modelo de Vosk**
-- Puedes descargarlo desde: [https://alphacephei.com/vosk/models](https://alphacephei.com/vosk/models)
-- Extrae el modelo en la carpeta raíz del proyecto con el nombre: `vosk-model-es-0.42`
-
-### **4️⃣ Configura FFmpeg**
-- Descárgalo desde: [https://ffmpeg.org/download.html](https://ffmpeg.org/download.html)
-- Agrega el binario `ffmpeg.exe` a las variables de entorno del sistema.
+- **Transcripción precisa**: Usa el modelo **Whisper AI (Small)** de OpenAI para convertir el audio en texto.
+- **Resúmenes automáticos**: Genera resúmenes utilizando **BART de Facebook** para facilitar la comprensión del contenido.
+- **Interfaz gráfica intuitiva**: Desarrollada con **Tkinter**, con botones de selección de archivo, barra de progreso y mensajes de estado.
+- **Extracción de audio**: Convierte videos en audio WAV antes de la transcripción utilizando **Pydub**.
+- **Optimizado para CPU y GPU**: Detecta automáticamente si hay una GPU disponible y ajusta la carga del modelo en consecuencia.
 
 ---
 
-## 🚀 **Uso**
-Para ejecutar la aplicación, usa el siguiente comando:
+## Tecnologías Usadas
+
+- **Python 3** - Lenguaje principal del programa.
+- **Whisper AI** - Para la transcripción del audio.
+- **Hugging Face Transformers (BART)** - Para la generación de resúmenes automáticos.
+- **Pydub** - Para la extracción y conversión de audio.
+- **Tkinter** - Para la interfaz de usuario.
+
+---
+
+## Instalación de Dependencias
+
+Para ejecutar el programa, primero instala las dependencias necesarias:
 
 ```bash
-python video_a_texto.py
+pip install torch torchvision torchaudio whisper
+pip install transformers
+pip install pydub
+pip install tkinter
+pip install ffmpeg-python
 ```
 
-### 📂 **Interfaz Gráfica (GUI)**
-1. **Selecciona el archivo de video** 🎥
-2. **Elige la carpeta de salida** 📎
-3. **Especifica el nombre del archivo** 📝
-4. **Inicia la transcripción** y espera a que termine ⏳
+Si usas **GPU**, asegúrate de instalar PyTorch con soporte para CUDA. Puedes verificar las instrucciones en [PyTorch](https://pytorch.org/get-started/locally/).
 
-El resultado será un archivo `.txt` generado en la carpeta especificada.
+Además, instala **FFmpeg** si no lo tienes:
+
+- **Windows**: [Descargar FFmpeg](https://ffmpeg.org/download.html)
+- **Linux/macOS**: Ejecuta `sudo apt install ffmpeg` o `brew install ffmpeg`.
 
 ---
 
-## 🛠️ **Explicación del Código**
-El código está organizado en una **clase principal** llamada `TranscriptorApp`, que maneja toda la funcionalidad de la aplicación.
+## Cómo Usarlo
 
-### **🔹 Inicialización de la Aplicación**
-```python
-class TranscriptorApp:
-    def __init__(self, master):
-        self.master = master
-        self.master.title("Transcriptor Avanzado de Video a Texto")
-        self.master.geometry("600x450")
-```
-- Crea la ventana principal con **Tkinter**.
-- Define el tamaño y el título de la aplicación.
-
-### **🔹 Configuración de Modelos**
-```python
-self.MODELO_VOSK = self.cargar_modelo_vosk()
-self.nlp = spacy.load("es_core_news_sm")
-self.kw_model = KeyBERT('paraphrase-multilingual-MiniLM-L12-v2')
-```
-- **Vosk** se carga para el reconocimiento de voz.
-- **SpaCy** se usa para dividir el texto en oraciones.
-- **KeyBERT** permite extraer palabras clave del texto.
-
-### **🔹 Conversión del Video a Audio**
-```python
-def extraer_audio(self, video_path, audio_path):
-    audio = AudioSegment.from_file(video_path)
-    audio = audio.set_frame_rate(16000).set_channels(1)
-    audio.export(audio_path, format="wav")
-```
-- Extrae el **audio** del video y lo convierte a **formato WAV** compatible con **Vosk**.
-
-### **🔹 Transcripción del Audio**
-```python
-def procesar_audio(self, audio_path):
-    recognizer = KaldiRecognizer(self.MODELO_VOSK, 16000)
-    texto_total = []
-    with wave.open(audio_path, 'rb') as audio_file:
-        while True:
-            data = audio_file.readframes(4000)
-            if not data:
-                break
-            if recognizer.AcceptWaveform(data):
-                resultado = json.loads(recognizer.Result())
-                texto_total.append(resultado.get('text', ''))
-    return ' '.join(texto_total)
-```
-- **Vosk** procesa el audio y lo transcribe en **texto**.
-
-### **📂 Estructura del Proyecto**
-```
-📁 videoa_texto
-🌍 vosk-model-es-0.42    # Modelo de Vosk en español
-📝 requirements.txt       # Dependencias del proyecto
-📝 README.md              # Documentación del proyecto
-📝 video_a_texto.py       # Código principal del transcriptor
-```
+1. Ejecuta el script **`video_a_texto.py`**:
+   ```bash
+   python video_a_texto.py
+   ```
+2. En la interfaz gráfica, selecciona un archivo de video.
+3. Presiona **"Iniciar Transcripción"**.
+4. Espera a que el programa extraiga el audio, transcriba y resuma el contenido.
+5. La transcripción y el resumen se guardarán en un archivo de texto junto al video.
 
 ---
 
-## 🐄 **Licencia**
-Este proyecto está bajo la Licencia **MIT**, lo que significa que puedes usarlo, modificarlo y distribuirlo libremente.
+## Notas y Recomendaciones
+
+- Para mejorar el rendimiento en CPU, usa el modelo **Whisper Small** o **Tiny** en lugar de "base".
+- Los resúmenes pueden fallar si el texto es muy largo; el programa maneja este error dividiendo la transcripción en partes.
+- Si experimentas problemas de audio, asegúrate de que FFmpeg esté correctamente instalado y en el PATH.
 
 ---
 
-🔹 **Conclusión:**  
-Este proyecto es una herramienta potente para la transcripción automática de videos. Su arquitectura modular y su combinación de tecnologías lo hacen ideal para procesar grandes volúmenes de contenido audiovisual con alta precisión. 🚀
+## Contacto y Contribuciones
+
+Si tienes sugerencias, errores o mejoras, ¡házmelas saber! Puedes contribuir con mejoras en el código o sugerencias de optimización.
+
+**Autor:** Jorge Sislema
 

@@ -1,193 +1,127 @@
 import os
-import re
-import time
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import threading
-import queue
-import yt_dlp
-from vosk import Model, KaldiRecognizer
-import wave
-import json
-from googletrans import Translator
-from PIL import Image, ImageTk
+from pydub import AudioSegment
+import whisper
+import torch
+from transformers import pipeline
 
-
-class VideoDownloaderPro:
+class VideoToTextApp:
     def __init__(self, root):
         self.root = root
+        self.root.title("Transcriptor IA - Video a Texto")
+        self.root.geometry("800x500")
+        self.root.resizable(False, False)
+        self.root.configure(bg='#f4f4f4')
 
-        # Definir modelos antes de la UI para evitar el error
-        self.modelos = {
-            'español': 'vosk-model-small-es-0.42',
-            'inglés': 'vosk-model-small-en-us-0.15',
-            'francés': 'vosk-model-small-fr-0.22'
-        }
-        
-        self.translator = Translator()
-        self.current_model = None
-        self.output_path = os.path.expanduser("~/Downloads")
-        self.running = False
-        self.download_queue = queue.Queue()
+        # Configuramos el modelo Whisper con detección automática de hardware
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.model = whisper.load_model("small", device=self.device)  
+
+        # Cargar el modelo de resumen BART de Hugging Face
+        self.summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
 
         self.setup_ui()
-        self.process_queue()
-
-        # Cargar iconos
-        self.load_icons()
-
-    def load_icons(self):
-        try:
-            self.folder_icon = ImageTk.PhotoImage(Image.open("folder_icon.png").resize((20, 20)))
-            self.download_icon = ImageTk.PhotoImage(Image.open("download_icon.png").resize((20, 20)))
-        except:
-            self.folder_icon = "📁"
-            self.download_icon = "⏬"
 
     def setup_ui(self):
-        self.root.title("Descargador y Transcriptor de Videos")
-        self.root.geometry("800x600")
-        self.root.resizable(False, False)
-
+        """Interfaz gráfica mejorada"""
         main_frame = ttk.Frame(self.root, padding=10)
         main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
 
-        ttk.Label(main_frame, text="Descargador Multimedia", font=('Arial', 14, 'bold')).grid(row=0, column=0, pady=10, columnspan=3)
+        ttk.Label(main_frame, text="Transcriptor IA - Video a Texto", font=('Arial', 16, 'bold')).pack(pady=10)
 
-        # Configuración
-        config_frame = ttk.LabelFrame(main_frame, text="Configuración")
-        config_frame.grid(row=1, column=0, pady=10, columnspan=3, sticky='ew')
+        # Selección de archivo local
+        file_frame = ttk.Frame(main_frame)
+        file_frame.pack(fill=tk.X, pady=10)
+        
+        ttk.Label(file_frame, text="Archivo de video:", font=('Arial', 12)).pack(side=tk.LEFT, padx=5)
+        self.file_entry = ttk.Entry(file_frame, width=50, font=('Arial', 10))
+        self.file_entry.pack(side=tk.LEFT, padx=5, expand=True, fill=tk.X)
+        self.browse_button = ttk.Button(file_frame, text="Seleccionar", command=self.select_file)
+        self.browse_button.pack(side=tk.LEFT, padx=5)
 
-        ttk.Label(config_frame, text="URL del video:").grid(row=0, column=0, padx=5, pady=5, sticky='e')
-        self.url_entry = ttk.Entry(config_frame, width=50)
-        self.url_entry.grid(row=0, column=1, columnspan=2, padx=5, sticky='ew')
-
-        # Selector de formato
-        self.format_var = tk.StringVar(value='video')
-        ttk.Radiobutton(config_frame, text="Video MP4", variable=self.format_var, value='video').grid(row=1, column=1, padx=5, sticky='w')
-        ttk.Radiobutton(config_frame, text="Audio MP3", variable=self.format_var, value='audio').grid(row=1, column=2, padx=5, sticky='w')
-
-        # Selector de idioma
-        ttk.Label(config_frame, text="Idioma del audio:").grid(row=2, column=0, padx=5, pady=5, sticky='e')
-        self.lang_var = tk.StringVar(value='español')
-        self.lang_combobox = ttk.Combobox(config_frame, textvariable=self.lang_var, values=list(self.modelos.keys()))
-        self.lang_combobox.grid(row=2, column=1, padx=5, sticky='ew')
-
-        # Opciones de traducción
-        self.translate_var = tk.BooleanVar()
-        self.translate_check = ttk.Checkbutton(config_frame, text="Traducir a español", variable=self.translate_var)
-        self.translate_check.grid(row=2, column=2, padx=5, sticky='w')
-
-        # Botones
-        button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=3, column=0, pady=15, columnspan=3)
-
-        ttk.Button(button_frame, text="Seleccionar Carpeta", command=self.select_directory).pack(side=tk.LEFT, padx=5)
-        self.download_btn = ttk.Button(button_frame, text="Iniciar Descarga", command=self.start_download)
-        self.download_btn.pack(side=tk.LEFT, padx=5)
+        # Botón para iniciar la transcripción
+        self.process_btn = ttk.Button(main_frame, text="Iniciar Transcripción", command=self.process_local_file, style='Accent.TButton')
+        self.process_btn.pack(pady=10)
 
         # Barra de progreso
         self.progress_bar = ttk.Progressbar(main_frame, orient=tk.HORIZONTAL, length=600, mode='determinate')
-        self.progress_bar.grid(row=4, column=0, pady=15, columnspan=3)
+        self.progress_bar.pack(pady=15)
 
         # Estado
-        status_frame = ttk.Frame(main_frame)
-        status_frame.grid(row=5, column=0, pady=10, columnspan=3, sticky='ew')
+        self.status_label = ttk.Label(main_frame, text="Listo para comenzar", foreground='#2c3e50', font=('Arial', 12))
+        self.status_label.pack(pady=10)
 
-        self.status_label = ttk.Label(status_frame, text="Listo para comenzar", foreground='#2c3e50')
-        self.status_label.pack(side=tk.LEFT)
+    def select_file(self):
+        """Seleccionar un archivo de video local"""
+        file_path = filedialog.askopenfilename(title="Seleccionar video", filetypes=[("Archivos multimedia", "*.mp4 *.avi *.mkv *.mov")])
+        if file_path:
+            self.file_entry.delete(0, tk.END)
+            self.file_entry.insert(0, file_path)
 
-        self.time_label = ttk.Label(status_frame, text="Tiempo transcurrido: 00:00:00")
-        self.time_label.pack(side=tk.RIGHT)
+    def process_local_file(self):
+        """Procesa un archivo de video local en un hilo separado"""
+        file_path = self.file_entry.get()
+        if not file_path:
+            messagebox.showerror("Error", "Por favor selecciona un archivo")
+            return
+        threading.Thread(target=self.process_transcription, args=(file_path,), daemon=True).start()
 
-        self.root.bind('<Return>', lambda event: self.start_download())
+    def extract_audio(self, video_path):
+        """Convierte un video en un archivo de audio WAV"""
+        audio_path = os.path.splitext(video_path)[0] + ".wav"
+        self.status_label.config(text="Extrayendo audio...")
+        self.root.update_idletasks()
+        try:
+            audio = AudioSegment.from_file(video_path)
+            audio.export(audio_path, format="wav")
+            return audio_path
+        except Exception as e:
+            messagebox.showerror("Error", f"No se pudo extraer el audio: {e}")
+            return None
 
-    def select_directory(self):
-        directory = filedialog.askdirectory()
-        if directory:
-            self.output_path = directory
-            self.status_label.config(text=f"Carpeta seleccionada: {directory}")
+    def process_transcription(self, video_path):
+        """Realiza la transcripción del video seleccionado con feedback visual"""
+        self.process_btn["state"] = "disabled"
+        self.progress_bar["value"] = 10
+        self.root.update_idletasks()
 
-    def start_download(self):
-        if self.running:
-            messagebox.showwarning("Advertencia", "Ya hay una operación en curso")
+        audio_path = self.extract_audio(video_path)
+        if not audio_path:
+            self.process_btn["state"] = "normal"
             return
 
-        url = self.url_entry.get().strip()
-        if not url:
-            messagebox.showerror("Error", "Por favor ingresa una URL válida")
-            return
+        self.status_label.config(text="Transcribiendo con Whisper AI...")
+        self.progress_bar["value"] = 50
+        self.root.update_idletasks()
 
-        self.running = True
-        self.download_btn['state'] = 'disabled'
-        self.start_time = time.time()
+        result = self.model.transcribe(audio_path)
+        transcription_text = result["text"]
 
-        options = {
-            'outtmpl': os.path.join(self.output_path, '%(title)s.%(ext)s'),
-            'progress_hooks': [self.progress_hook],
-            'quiet': True,
-            'noplaylist': True
-        }
+        self.progress_bar["value"] = 80
+        self.root.update_idletasks()
 
-        if self.format_var.get() == 'audio':
-            options.update({
-                'format': 'bestaudio/best',
-                'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3', 'preferredquality': '256'}],
-            })
+        # Manejo de errores en la generación de resúmenes
+        summary = ""
+        if transcription_text.strip():
+            try:
+                self.status_label.config(text="Resumiendo transcripción...")
+                summary = self.summarizer(transcription_text[:1024], max_length=150, min_length=50, do_sample=False)[0]['summary_text']
+            except Exception as e:
+                summary = "No se pudo generar el resumen. Error: " + str(e)
 
-        threading.Thread(target=self.process_download, args=(url, options), daemon=True).start()
-        self.update_timer()
+        text_output = os.path.splitext(video_path)[0] + "_transcrito.txt"
+        with open(text_output, "w", encoding="utf-8") as f:
+            f.write("TRANSCRIPCIÓN:\n" + transcription_text + "\n\nRESUMEN:\n" + summary)
 
-    def process_download(self, url, options):
-        try:
-            with yt_dlp.YoutubeDL(options) as ydl:
-                info = ydl.extract_info(url, download=True)
-                filename = ydl.prepare_filename(info)
-
-                if options.get('postprocessors'):
-                    filename = os.path.splitext(filename)[0] + '.mp3'
-
-            self.download_queue.put(('success', filename))
-            self.process_transcription(filename)
-
-        except Exception as e:
-            self.download_queue.put(('error', f"Error en descarga: {str(e)}"))
-        finally:
-            self.download_queue.put(('done', None))
-
-    def process_transcription(self, filename):
-        if self.format_var.get() == 'audio':
-            self.download_queue.put(('status', "Iniciando transcripción..."))
-            transcript = self.transcribe_audio(filename)
-
-            if self.translate_var.get():
-                self.download_queue.put(('status', "Traduciendo contenido..."))
-                translated = self.translate_text(transcript)
-                self.save_file(filename, translated, '_traducido.txt')
-            else:
-                self.save_file(filename, transcript, '_transcrito.txt')
-
-    def transcribe_audio(self, file_path):
-        try:
-            wf = wave.open(file_path, 'rb')
-            recognizer = KaldiRecognizer(self.current_model, wf.getframerate())
-
-            results = []
-            while True:
-                data = wf.readframes(4000)
-                if len(data) == 0:
-                    break
-                if recognizer.AcceptWaveform(data):
-                    result = json.loads(recognizer.Result())
-                    results.append(result.get('text', ''))
-
-            return ' '.join(results)
-
-        except Exception as e:
-            self.download_queue.put(('error', f"Error en transcripción: {str(e)}"))
-            return ""
+        self.progress_bar["value"] = 100
+        self.status_label.config(text="¡Transcripción y resumen completados!")
+        messagebox.showinfo("Éxito", f"Transcripción guardada en {text_output}")
+        self.process_btn["state"] = "normal"
+        self.progress_bar["value"] = 0
 
 if __name__ == "__main__":
     root = tk.Tk()
-    app = VideoDownloaderPro(root)
+    app = VideoToTextApp(root)
     root.mainloop()
