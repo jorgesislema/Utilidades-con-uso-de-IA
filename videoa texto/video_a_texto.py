@@ -1,127 +1,137 @@
+# Instalamos las  dependencias nesesarias
+!pip install -q pydub openai torch torchvision torchaudio transformers google-colab ipywidgets ffmpeg fpdf python-docx
+
+# Importamos las librerías
 import os
-import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
-import threading
+import time
 from pydub import AudioSegment
 import whisper
 import torch
 from transformers import pipeline
+from google.colab import auth
+from googleapiclient.discovery import build
+from google.colab import files
+from IPython.display import display, clear_output, HTML
+import ipywidgets as widgets
+from fpdf import FPDF
+from docx import Document
 
-class VideoToTextApp:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Transcriptor IA - Video a Texto")
-        self.root.geometry("800x500")
-        self.root.resizable(False, False)
-        self.root.configure(bg='#f4f4f4')
+# Autenticación en Google Drive
+auth.authenticate_user()
+from google.colab import drive
+drive.mount('/content/drive')
 
-        # Configuramos el modelo Whisper con detección automática de hardware
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.model = whisper.load_model("small", device=self.device)  
+# Configuramos del dispositivo para que pueda trabajar con (CPU/GPU)
+dispositivo = "cuda" if torch.cuda.is_available() else "cpu"
+print(f"Dispositivo en uso: {dispositivo}")
 
-        # Cargar el modelo de resumen BART de Hugging Face
-        self.summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
+# Cargamos los modelos
+print("Cargando modelos...")
+inicio = time.time()
 
-        self.setup_ui()
+# Cargamos el  modelo de Whisper
+modelo = whisper.load_model("small", device=dispositivo)
 
-    def setup_ui(self):
-        """Interfaz gráfica mejorada"""
-        main_frame = ttk.Frame(self.root, padding=10)
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+# Cargamos el  modelo de resumen
+try:
+    resumen_modelo = pipeline("summarization", model="facebook/bart-large-cnn")
+except Exception as e:
+    print(f"Error cargando el modelo de resumen: {str(e)}")
+    resumen_modelo = None
 
-        ttk.Label(main_frame, text="Transcriptor IA - Video a Texto", font=('Arial', 16, 'bold')).pack(pady=10)
+print(f"Modelos cargados en {time.time() - inicio:.1f} segundos")
 
-        # Selección de archivo local
-        file_frame = ttk.Frame(main_frame)
-        file_frame.pack(fill=tk.X, pady=10)
-        
-        ttk.Label(file_frame, text="Archivo de video:", font=('Arial', 12)).pack(side=tk.LEFT, padx=5)
-        self.file_entry = ttk.Entry(file_frame, width=50, font=('Arial', 10))
-        self.file_entry.pack(side=tk.LEFT, padx=5, expand=True, fill=tk.X)
-        self.browse_button = ttk.Button(file_frame, text="Seleccionar", command=self.select_file)
-        self.browse_button.pack(side=tk.LEFT, padx=5)
-
-        # Botón para iniciar la transcripción
-        self.process_btn = ttk.Button(main_frame, text="Iniciar Transcripción", command=self.process_local_file, style='Accent.TButton')
-        self.process_btn.pack(pady=10)
-
-        # Barra de progreso
-        self.progress_bar = ttk.Progressbar(main_frame, orient=tk.HORIZONTAL, length=600, mode='determinate')
-        self.progress_bar.pack(pady=15)
-
-        # Estado
-        self.status_label = ttk.Label(main_frame, text="Listo para comenzar", foreground='#2c3e50', font=('Arial', 12))
-        self.status_label.pack(pady=10)
-
-    def select_file(self):
-        """Seleccionar un archivo de video local"""
-        file_path = filedialog.askopenfilename(title="Seleccionar video", filetypes=[("Archivos multimedia", "*.mp4 *.avi *.mkv *.mov")])
-        if file_path:
-            self.file_entry.delete(0, tk.END)
-            self.file_entry.insert(0, file_path)
-
-    def process_local_file(self):
-        """Procesa un archivo de video local en un hilo separado"""
-        file_path = self.file_entry.get()
-        if not file_path:
-            messagebox.showerror("Error", "Por favor selecciona un archivo")
-            return
-        threading.Thread(target=self.process_transcription, args=(file_path,), daemon=True).start()
-
-    def extract_audio(self, video_path):
-        """Convierte un video en un archivo de audio WAV"""
+# Funcion convierte video a formato WAV
+def extract_audio(video_path):
+    try:
         audio_path = os.path.splitext(video_path)[0] + ".wav"
-        self.status_label.config(text="Extrayendo audio...")
-        self.root.update_idletasks()
-        try:
-            audio = AudioSegment.from_file(video_path)
-            audio.export(audio_path, format="wav")
-            return audio_path
-        except Exception as e:
-            messagebox.showerror("Error", f"No se pudo extraer el audio: {e}")
-            return None
+        audio = AudioSegment.from_file(video_path)
+        audio.export(audio_path, format="wav")
+        return audio_path
+    except Exception as e:
+        print(f"Error extrayendo audio: {str(e)}")
+        return None
+# Esta funcion guarda el resultado en el formato seleccionado y permite escoger ruta de almacenamiento
+def guardar_resultado(texto, nombre_archivo, formato, ruta_guardado):
+    ruta_completa = os.path.join(ruta_guardado, nombre_archivo)
+    
+    if formato == "txt":
+        with open(ruta_completa + ".txt", "w", encoding="utf-8") as f:
+            f.write(texto)
+        display(HTML(f'<a href="/{ruta_completa}.txt" download>{nombre_archivo}.txt</a>'))
+    elif formato == "pdf":
+        pdf = FPDF()
+        pdf.set_auto_page_break(auto=True, margin=15)
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        pdf.multi_cell(190, 10, texto)
+        pdf.output(ruta_completa + ".pdf")
+        display(HTML(f'<a href="/{ruta_completa}.pdf" download>{nombre_archivo}.pdf</a>'))
+    elif formato == "docx":
+        doc = Document()
+        doc.add_paragraph(texto)
+        doc.save(ruta_completa + ".docx")
+        display(HTML(f'<a href="/{ruta_completa}.docx" download>{nombre_archivo}.docx</a>'))
+    print(f"Archivo guardado en formato {formato} en {ruta_guardado}.")
 
-    def process_transcription(self, video_path):
-        """Realiza la transcripción del video seleccionado con feedback visual"""
-        self.process_btn["state"] = "disabled"
-        self.progress_bar["value"] = 10
-        self.root.update_idletasks()
-
-        audio_path = self.extract_audio(video_path)
+# Esta función procesa los archivos desde Google Drive
+def transcribir_desde_drive(ruta_drive, formato_salida, ruta_guardado):
+    clear_output()
+    print("Procesando archivo...")
+    
+    if resumen_modelo is None:
+        print("Error: Modelo de resumen no disponible")
+        return
+    
+    try:
+        print(f"📂 Procesando archivo: {ruta_drive}")
+        
+        #  Extraemos el audio
+        print("🎵 Extrayendo audio...")
+        audio_path = extract_audio(ruta_drive)
         if not audio_path:
-            self.process_btn["state"] = "normal"
             return
-
-        self.status_label.config(text="Transcribiendo con Whisper AI...")
-        self.progress_bar["value"] = 50
-        self.root.update_idletasks()
-
-        result = self.model.transcribe(audio_path)
-        transcription_text = result["text"]
-
-        self.progress_bar["value"] = 80
-        self.root.update_idletasks()
-
-        # Manejo de errores en la generación de resúmenes
-        summary = ""
-        if transcription_text.strip():
+        
+        #  Transcripción del video
+        print("📝 Transcribiendo con Whisper...")
+        result = modelo.transcribe(audio_path)
+        texto_completo = result["text"]
+        
+        # Generamos el resumen
+        print("📄 Generando resumen...")
+        texto_resumen = ""
+        if len(texto_completo) > 50:
             try:
-                self.status_label.config(text="Resumiendo transcripción...")
-                summary = self.summarizer(transcription_text[:1024], max_length=150, min_length=50, do_sample=False)[0]['summary_text']
+                resumen = resumen_modelo(
+                    texto_completo[:1024], 
+                    max_length=150, 
+                    min_length=50,
+                    do_sample=False
+                )[0]['summary_text']
+                texto_resumen = f"\nRESUMEN AUTOMÁTICO:\n{resumen}\n"
             except Exception as e:
-                summary = "No se pudo generar el resumen. Error: " + str(e)
+                texto_resumen = f"\nError generando resumen: {str(e)}\n"
+        
+        # Formateamos el resultado
+        texto_final = f"ARCHIVO PROCESADO: {ruta_drive}\n\n"
+        texto_final += f"TRANSCRIPCIÓN COMPLETA:\n{texto_completo}\n\n{texto_resumen}\n"
+        texto_final += f"Procesado el: {time.ctime()}"
+        
+        # Guardamos 
+        archivo_salida = os.path.splitext(os.path.basename(ruta_drive))[0] + "_TRANSCRIPCION"
+        guardar_resultado(texto_final, archivo_salida, formato_salida, ruta_guardado)
+        print("✅ Proceso completado.")
+        
+    except Exception as e:
+        print(f"Error inesperado: {str(e)}")
+    
+    finally:
+        if 'audio_path' in locals() and os.path.exists(audio_path):
+            os.remove(audio_path)
+        print("🎯 Tarea finalizada.")
 
-        text_output = os.path.splitext(video_path)[0] + "_transcrito.txt"
-        with open(text_output, "w", encoding="utf-8") as f:
-            f.write("TRANSCRIPCIÓN:\n" + transcription_text + "\n\nRESUMEN:\n" + summary)
-
-        self.progress_bar["value"] = 100
-        self.status_label.config(text="¡Transcripción y resumen completados!")
-        messagebox.showinfo("Éxito", f"Transcripción guardada en {text_output}")
-        self.process_btn["state"] = "normal"
-        self.progress_bar["value"] = 0
-
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = VideoToTextApp(root)
-    root.mainloop()
+# Solicitamos al usuario el archivo desde Google Drive, el formato de salida y la ruta de guardado
+ruta_archivo = input("Introduce la ruta completa del archivo en Google Drive (Ejemplo: /content/drive/My Drive/video.mp4): ")
+formato_salida = input("Introduce el formato de salida (txt, pdf, docx): ")
+ruta_guardado = input("Introduce la ruta donde deseas guardar el archivo (Ejemplo: /content/drive/My Drive/Resultados): ")
+transcribir_desde_drive(ruta_archivo, formato_salida, ruta_guardado)
