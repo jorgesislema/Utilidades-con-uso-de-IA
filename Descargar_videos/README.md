@@ -27,29 +27,46 @@ Este proyecto es una aplicación de escritorio para descargar videos y audios de
 
 ## 📥 Instalación
 
-### 1️⃣ Clona el repositorio  
+### 1️⃣ Instala las dependencias
 ```bash
-git clone https://github.com/tu-usuario/descargador-videos.git
-cd descargador-videos
-```
-
-## 2️⃣ Crea un entorno virtual e instala dependencias
-```bash
-python -m venv venv
-source venv/bin/activate  # En Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
-- Nota: Asegúrate de tener ffmpeg instalado en tu sistema. Puedes instalarlo con:
 
-    Windows: Descarga FFmpeg y configúralo en las variables de entorno.
+### 2️⃣ Ejecuta la aplicación mejorada
+```bash
+python descargador_mejorado.py
+```
+
 ---
+
+## ✨ Características de la Versión Mejorada
+
+- **Validación de URL**: Verifica que la URL sea válida antes de descargar
+- **Botón pegar**: Pega automáticamente desde el portapapeles  
+- **Interfaz mejorada**: Diseño más limpio y profesional
+- **Mejor manejo de errores**: Mensajes claros y específicos
+- **Progreso detallado**: Porcentaje exacto de descarga
+- **Arquitectura orientada a objetos**: Código más organizado y mantenible
+
+---
+
 ## 🎯 Uso
 
-1️⃣ Ejecuta el programa
-```bash
-python main.py
-```
+1. Ejecuta `python descargador_mejorado.py`
+2. Pega o escribe la URL del video
+3. Selecciona formato (video completo o solo audio)
+4. Elige la carpeta de destino
+5. Haz clic en "Descargar"
+
 ---
+
+## 🔧 Solución de Problemas
+
+Si tienes errores de módulos faltantes, instala usando tu versión específica de Python:
+
+```powershell
+C:/ruta/a/tu/python.exe -m pip install -r requirements.txt
+```
 
 ## 🐄 **Licencia**
 Este proyecto está bajo la Licencia **MIT**, lo que significa que puedes usarlo, modificarlo y distribuirlo libremente.
