@@ -1,12 +1,10 @@
 # Librerias
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
-from gtts import gTTS
-from deep_translator import GoogleTranslator
+from utils_archivos import extract_text
+from utils_traduccion import traducir_texto
+from utils_tts import text_to_speech
 import os
-import docx2txt
-import pdfplumber
-from ebooklib import epub
 import textwrap
 import threading
 
@@ -22,80 +20,6 @@ IDIOMAS_DISPONIBLES = {
 
 # Tamaño máximo de caracteres por fragmento para gTTS
 MAX_CHARACTERS = 4000
-
-# Función para extraer texto de archivos sin cargar todo en memoria,extrae texto de archivos grandes sin sobrecargar la memoria
-def extract_text(file_path):
-    extension = file_path.lower().split('.')[-1]
-    
-    try:
-        if extension == 'pdf':
-            text = []
-            with pdfplumber.open(file_path) as pdf:
-                for page in pdf.pages:
-                    text.append(page.extract_text() or "")
-            return "\n".join(text)
-        
-        elif extension == 'epub':
-            text = []
-            book = epub.read_epub(file_path)
-            for item in book.get_items():
-                if item.get_type() == 9:  
-                    text.append(item.get_content().decode('utf-8', errors='ignore'))
-            return "\n".join(text)
-        
-        elif extension == 'docx':
-            return docx2txt.process(file_path) or ""
-        
-        elif extension == 'txt':
-            with open(file_path, 'r', encoding='utf-8') as f:
-                return f.read()
-        
-        else:
-            return f"[Error] Formato no soportado: .{extension}"
-    
-    except Exception as e:
-        return f"[Error] No se pudo procesar el archivo: {str(e)}"
-
-# Función para la traducción de Texto Mejorada ,traduce fragmentos grandes en partes pequeñas para evitar errores de mezcla de idiomas.
-def traducir_texto(texto, idioma_destino="es"):
-    try:
-        if idioma_destino == "auto":  
-            return texto
-        
-        traductor = GoogleTranslator(source="auto", target=idioma_destino)
-        fragmentos = textwrap.wrap(texto, MAX_CHARACTERS, break_long_words=False, replace_whitespace=False)
-        texto_traducido = "\n".join([traductor.translate(frag) for frag in fragmentos])
-        return texto_traducido
-    except Exception as e:
-        print(f"❌ Error en la traducción: {e}")
-        return texto  
-
-# Función para la conversión de texto a audio optimizada con hilos ,convierte texto a audio de manera eficiente usando multithreading
-def text_to_speech(text, language, output_folder, progress_bar):
-    def process_audio():
-        try:
-            os.makedirs(output_folder, exist_ok=True)
-            fragments = textwrap.wrap(text, MAX_CHARACTERS, break_long_words=False, replace_whitespace=False)
-            num_fragments = len(fragments)
-            
-            for i, fragment in enumerate(fragments, start=1):
-                progress = int((i / num_fragments) * 100)
-                progress_bar["value"] = progress  
-                root.update_idletasks()
-
-                tts = gTTS(text=fragment, lang=language, slow=False)
-                output_file = os.path.join(output_folder, f"parte_{i}.mp3")
-                tts.save(output_file)
-
-            messagebox.showinfo("Éxito", f"Conversión completada. Archivos guardados en:\n{output_folder}")
-
-        except Exception as e:
-            messagebox.showerror("Error en la conversión", str(e))
-
-        finally:
-            progress_bar["value"] = 0  
-
-    threading.Thread(target=process_audio, daemon=True).start()
 
 # Interfaz gráfica 
 class TTSApp:
@@ -138,6 +62,10 @@ class TTSApp:
         # Botón de conversión
         tk.Button(root, text="🔊 Convertir a Audiolibro", command=self.convert).pack(pady=10)
 
+        # Botón para cancelar la conversión
+        self.cancel_btn = tk.Button(root, text="❌ Cancelar conversión", command=self.cancel_conversion, state="disabled")
+        self.cancel_btn.pack(pady=2)
+
     #Función para abrir el explorador de archivos para seleccionar un documento
     def select_file(self):
         file_path = filedialog.askopenfilename(filetypes=[("Documentos", "*.pdf;*.docx;*.epub;*.txt")])
@@ -150,25 +78,36 @@ class TTSApp:
         if folder_path:
             self.output_folder.set(folder_path)
 
+    def cancel_conversion(self):
+        self.root.cancelar_conversion = True
+        self.cancel_btn.config(state="disabled")
+
     #Función para iniciar la conversión de texto a audiolibro con traducción si es necesario.
     def convert(self):
         if not self.file_path.get() or not self.output_folder.get():
             messagebox.showwarning("Advertencia", "Selecciona un archivo de entrada y una carpeta de salida")
             return
 
-        text = extract_text(self.file_path.get())
+        self.root.cancelar_conversion = False
+        self.cancel_btn.config(state="normal")
 
-        if "[Error]" in text:
+        text = extract_text(self.file_path.get())
+        if text.startswith("[Error]"):
             messagebox.showerror("Error", text)
+            self.cancel_btn.config(state="disabled")
             return
 
         if self.source_language.get() != self.target_language.get():
             text = traducir_texto(text, IDIOMAS_DISPONIBLES[self.target_language.get()])
-            if "[Error]" in text:
+            if text.startswith("[Error]"):
                 messagebox.showerror("Error en la traducción", text)
+                self.cancel_btn.config(state="disabled")
                 return
 
-        text_to_speech(text, IDIOMAS_DISPONIBLES[self.target_language.get()], self.output_folder.get(), self.progress_bar)
+        def finalizar_conversion():
+            self.cancel_btn.config(state="disabled")
+        # Llama a text_to_speech y deshabilita el botón cancelar al finalizar
+        threading.Thread(target=lambda: (text_to_speech(text, IDIOMAS_DISPONIBLES[self.target_language.get()], self.output_folder.get(), self.progress_bar, self.root), finalizar_conversion()), daemon=True).start()
 
 # Ejecutamos la aplicación
 if __name__ == "__main__":
