@@ -9,20 +9,26 @@ from tqdm import tqdm
 import threading
 
 def download_video(url, output_path='downloads', audio_only=False, progress_callback=None):
-    """Descarga un video o audio de múltiples plataformas con barra de progreso."""
-    options = {
-        'outtmpl': f'{output_path}/%(title)s.%(ext)s',
-        'format': 'bestaudio/best' if audio_only else 'bestvideo+bestaudio/best',
-        'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3'}] if audio_only else [],
-        'progress_hooks': [progress_callback] if progress_callback else []
-    }
-    
-    with yt_dlp.YoutubeDL(options) as ydl:
-        ydl.download([url])
-    print("Descarga completada!")
-    progress_var.set(100)  # Asegurar que la barra de progreso llegue al 100%
-    progress_label.config(text="Descarga completada!", fg="green")
-    root.update_idletasks()
+    """Descarga un video o audio de múltiples plataformas con barra de progreso y manejo de errores."""
+    try:
+        options = {
+            'outtmpl': f'{output_path}/%(title)s.%(ext)s',
+            'format': 'bestaudio/best' if audio_only else 'bestvideo+bestaudio/best',
+            'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3'}] if audio_only else [],
+            'progress_hooks': [progress_callback] if progress_callback else []
+        }
+        os.makedirs(output_path, exist_ok=True)
+        with yt_dlp.YoutubeDL(options) as ydl:
+            ydl.download([url])
+        print("Descarga completada!")
+        progress_var.set(100)
+        progress_label.config(text="Descarga completada!", fg="green")
+        root.update_idletasks()
+    except Exception as e:
+        progress_label.config(text=f"Error: {str(e)}", fg="red")
+        messagebox.showerror("Error en la descarga", str(e))
+        progress_var.set(0)
+        root.update_idletasks()
 
 def enhance_audio(file_path):
     """Mejora la calidad del audio usando Whisper AI."""
@@ -33,7 +39,9 @@ def enhance_audio(file_path):
 
 def browse_directory():
     folder_selected = filedialog.askdirectory()
-    return folder_selected if folder_selected else 'downloads'
+    if folder_selected:
+        output_folder_var.set(folder_selected)
+    return output_folder_var.get() if output_folder_var.get() else 'downloads'
 
 def progress_hook(d):
     if d['status'] == 'downloading':
@@ -50,18 +58,15 @@ def start_download():
     if not url:
         messagebox.showerror("Error", "Por favor ingresa una URL válida.")
         return
-    
-    output_path = browse_directory()
+    output_path = output_folder_var.get() if output_folder_var.get() else 'downloads'
     choice = audio_var.get()
     audio_only = choice == 1
-    
     progress_label.config(text="Descargando...", fg="blue")
     root.update()
-    
     threading.Thread(target=download_video, args=(url, output_path, audio_only, progress_hook), daemon=True).start()
 
 def gui():
-    global root, url_entry, audio_var, progress_label, progress_var
+    global root, url_entry, audio_var, progress_label, progress_var, output_folder_var
     root = tk.Tk()
     root.title("Descargador de Videos")
     root.geometry("500x300")
@@ -75,6 +80,9 @@ def gui():
     tk.Radiobutton(root, text="Video", variable=audio_var, value=0).pack()
     tk.Radiobutton(root, text="Solo Audio", variable=audio_var, value=1).pack()
     
+    output_folder_var = tk.StringVar(value='downloads')
+    tk.Label(root, text="Carpeta de salida actual:").pack()
+    tk.Entry(root, textvariable=output_folder_var, width=50, state='readonly').pack(pady=2)
     tk.Button(root, text="Seleccionar Carpeta", command=browse_directory).pack(pady=5)
     tk.Button(root, text="Descargar", command=start_download).pack(pady=10)
     
