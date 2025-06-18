@@ -1,6 +1,9 @@
+# Requisitos para el conversor de texto a audio
+
 gtts
 soundfile
-docx2txt
 pdfplumber
+docx2txt
 ebooklib
 deep-translator
+tkinter
