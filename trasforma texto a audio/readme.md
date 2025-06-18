@@ -39,68 +39,39 @@ Sigue estos pasos para clonar y ejecutar el proyecto:
 
 ```bash
 git clone https://github.com/tu_usuario/text-to-speech-audiobook.git
-cd text-to-speech-audiobook
 ```
 
-### 2️⃣ Crear un Entorno Virtual con Conda
+### 2️⃣ Instalar dependencias
+
+Se recomienda usar un entorno virtual (por ejemplo, conda o venv):
 
 ```bash
-conda create --name tts_env python=3.10
-conda activate tts_env
+cd trasforma\ texto\ a\ audio
+pip install -r requirements.txt
 ```
 
-📌 **¿Por qué Conda y Python 3.10?**  
-Conda permite administrar entornos de Python de manera aislada, asegurando que todas las dependencias sean compatibles y evitando problemas con versiones futuras de las bibliotecas.
-
-### 3️⃣ Instalar Dependencias
+### 3️⃣ Ejecutar la aplicación
 
 ```bash
-pip install gtts soundfile docx2txt pdfplumber ebooklib deep-translator
+python "de texto a audio .py"
 ```
-
-🔹 **Nota:** `tkinter` ya viene instalado en Python por defecto, pero si experimentas problemas, asegúrate de que esté disponible en tu entorno.
 
 ---
 
-## 🔧 Uso de la Aplicación
+## 📝 Notas
+- Asegúrate de tener conexión a internet para la traducción y la conversión de texto a voz.
+- El programa soporta archivos PDF, DOCX, EPUB y TXT.
+- Los archivos de audio se guardarán en la carpeta de salida seleccionada.
 
-### 1️⃣ Ejecutar la Aplicación
+---
 
-```bash
-python app.py
-```
+## 📂 Estructura del Proyecto
 
-### 2️⃣ Seleccionar Archivo de Texto
-
-📌 Puedes cargar archivos en los siguientes formatos:
-
-- **PDF (`.pdf`)**
-- **Word (`.docx`)**
-- **EPUB (`.epub`)**
-- **Texto plano (`.txt`)**
-
-### 3️⃣ Seleccionar Idioma de Salida
-
-📌 **Idiomas disponibles:**
-- **Español (`es`)**
-- **Inglés (`en`)**
-- **Francés (`fr`)**
-- **Alemán (`de`)**
-- **Italiano (`it`)**
-- **Portugués (`pt`)**
-
-Si eliges un idioma diferente al original, el texto se traducirá automáticamente **antes** de convertirlo a audio.
-
-### 4️⃣ Definir Carpeta de Salida
-
-Elige la carpeta donde se guardarán los archivos de audio.  
-Si el documento es muy largo, se dividirá en **múltiples archivos de audio** automáticamente.
-
-### 5️⃣ Iniciar Conversión
-
-- Presiona **"Convertir a Audiolibro"**.
-- La **barra de progreso** mostrará el avance del proceso.
-- Al finalizar, recibirás una **notificación** y los archivos estarán disponibles en la carpeta seleccionada.
+- `de texto a audio .py`: Script principal con la interfaz gráfica.
+- `utils_archivos.py`: Utilidades para extracción de texto de archivos.
+- `utils_traduccion.py`: Utilidades para traducción de texto.
+- `utils_tts.py`: Utilidades para conversión de texto a audio.
+- `requirements.txt`: Dependencias necesarias.
 
 ---
 
