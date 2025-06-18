@@ -74,6 +74,40 @@ Luego, abre el notebook en Google Colab y sigue las instrucciones.
 
 ---
 
+## Versión de Escritorio (Tkinter)
+
+Ahora puedes usar una versión local y multiplataforma, sin Google Colab ni Google Drive, con interfaz gráfica:
+
+### Instalación
+
+1. Instala las dependencias (se recomienda entorno virtual):
+
+```powershell
+pip install -r requirements.txt
+```
+
+2. Ejecuta la aplicación:
+
+```powershell
+python video_a_texto_app.py
+```
+
+### Características
+- Selecciona un archivo de video local (mp4, mkv, avi, mov, flv, wmv).
+- Elige carpeta y formato de salida (txt, pdf, docx).
+- Transcribe el audio a texto usando Whisper.
+- Genera resumen automático con Transformers.
+- Barra de progreso y mensajes claros.
+
+---
+
+## Estructura del Proyecto
+- `video_a_texto_app.py`: Interfaz gráfica local.
+- `utils_video2text.py`: Funciones de extracción, transcripción, resumen y guardado.
+- `requirements.txt`: Dependencias necesarias.
+
+---
+
 ## Contacto y Contribuciones
 
 Si tienes sugerencias, errores o mejoras, ¡házmelo saber! Puedes contribuir con mejoras en el código o sugerencias de optimización.
