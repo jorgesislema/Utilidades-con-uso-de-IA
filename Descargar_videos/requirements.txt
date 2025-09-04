@@ -1,5 +1,7 @@
-# Requisitos para el descargador de videos
+# Requisitos para Descargador Multiplataforma
 
-yt-dlp>=2024.1.1
-tqdm
-requests
+yt-dlp
+
+# whisper no es necesario para descargas, se usa en otras apps del repo
+# requests y tqdm no son necesarios aquí
+# Tkinter viene con Python (no requiere pip)
