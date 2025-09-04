@@ -60,6 +60,45 @@ python descargador_mejorado.py
 
 ---
 
+# Descargador Multiplataforma (Windows)
+
+GUI en Tkinter para descargar videos y audios desde múltiples plataformas usando `yt-dlp`.
+
+## Requisitos
+- Python 3.8+ (Windows)
+- ffmpeg y ffprobe en el PATH (recomendado para conversiones/embeds). Si no están, la app te mostrará un aviso. Puedes instalar builds para Windows desde: https://github.com/yt-dlp/FFmpeg-Builds
+- Paquetes Python:
+
+```powershell
+python -m pip install -r requirements.txt
+```
+
+## Cómo ejecutar
+```powershell
+python descargador_multiplataforma.py
+```
+
+## Funciones
+- Detección de plataforma común (YouTube, TikTok, Instagram, Facebook, X/Twitter, Reddit, Vimeo, Twitch, Dailymotion, Bilibili, SoundCloud)
+- Perfiles de formato: 1080p/720p/480p MP4, MP3, M4A, subtítulos (srt)
+- Opciones avanzadas: descargar e incrustar subtítulos, incrustar miniatura en audio, usar cookies.txt o extraer cookies automáticamente desde el navegador (Chrome/Edge/Firefox) mediante `cookiesfrombrowser` de yt-dlp
+- Barra de progreso, velocidad y ETA, carpeta de salida configurable
+
+### Tema opcional (ttkbootstrap)
+La app intenta usar un tema moderno ("darkly") con `ttkbootstrap` si está instalado. Es opcional, si no lo tienes, se usará Tkinter clásico.
+
+Instalación opcional:
+
+```powershell
+python -m pip install ttkbootstrap
+```
+
+## Notas
+- Algunas plataformas requieren autenticación/cookies. Puedes usar `cookies.txt` o seleccionar el navegador para que yt-dlp obtenga las cookies automáticamente.
+- Para MP3/M4A y embebidos, `ffmpeg/ffprobe` debe estar disponible.
+
+---
+
 ## 🔧 Solución de Problemas
 
 Si tienes errores de módulos faltantes, instala usando tu versión específica de Python:
